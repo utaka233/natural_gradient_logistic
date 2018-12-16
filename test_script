@@ -1,0 +1,42 @@
+# 自然勾配降下法
+# 事前に必要な関数を準備しておく。
+sigmoid <- function(z){1/(1+exp(-z))}
+d_sigmoid <- function(z){sigmoid(z)*(1-sigmoid(z))}
+cross_entropy <- function(y, p){mean(-y*log(p)-(1-y)*log(1-p))}
+
+
+# 各更新時の損失のhistoryを記録するオブジェクトを準備する。
+loss_NGD <- c()
+
+
+# ここからが学習アルゴリズム
+
+# Step 1 : 初期値と学習率ηを決める。
+w <- c(0, 0)    # 偏回帰係数の初期値
+eta <- 0.1    # 学習率
+size <- length(y_train)    # 訓練データのサンプルサイズを取得しておく。
+
+# Step 2 : 更新のiteration, 今回は10回更新する。
+for(i in 1:10){
+    # forward計算
+    z <- X_train %*% w
+    p <- sigmoid(z)
+    loss_NGD[i] <- cross_entropy(y_train, p)
+
+    # 勾配の計算
+    dp <- (p - y_train) / (size * p * (1-p))
+    dz <- d_sigmoid(z)
+    dw <- t(X_train) %*% (dz * dp)
+
+    # Fisher情報行列の計算（普通の勾配降下法にするなら、この計算をせずにFを単位行列にする。）
+    grad_logLL_z <- (y_train - p) / (p * (1-p)) * dz
+    grad_logLL_w <- matrix(rep(grad_logLL_z, each = ncol(X_train)), nrow(X_train), ncol(X_train), byrow = TRUE) * X_train 
+    F <- cov(grad_logLL_w)
+    
+    # wの更新
+    w <- w - eta * solve(F) %*% dw
+}
+
+# Step 3 : 学習結果の確認
+plot(x = 1:length(loss_NGD), y = loss_NGD, type = "l")
+cross_entropy(y_test, sigmoid(X_test %*% w))    # テストデータでの損失
